@@ -1,5 +1,7 @@
 package com.example.apao.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,8 +66,11 @@ fun MessagesScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 reverseLayout = true
             ) {
-                items(conversationMessages.reversed()) { message ->
-                    MessageBubble(
+                items(
+                    items = conversationMessages.reversed(),
+                    key = { it.id }
+                ) { message ->
+                    AnimatedMessageBubble(
                         message = message,
                         isFromCurrentUser = message.senderId == currentUser?.id
                     )
@@ -104,23 +110,65 @@ fun MessagesScreen(
                     maxLines = 4
                 )
                 
+                // Animación del botón de envío
+                var isSending by remember { mutableStateOf(false) }
+                val buttonScale by animateFloatAsState(
+                    targetValue = if (isSending) 0.95f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessHigh
+                    ),
+                    label = "sendButtonScale"
+                )
+                
                 Button(
                     onClick = {
                         if (messageText.isNotBlank() && currentUser != null) {
+                            isSending = true
                             viewModel.sendMessage(
                                 receiverId = receiverId,
                                 eventId = eventId,
                                 text = messageText
                             )
                             messageText = ""
+                            isSending = false
                         }
                     },
-                    enabled = messageText.isNotBlank()
+                    enabled = messageText.isNotBlank(),
+                    modifier = Modifier.scale(buttonScale)
                 ) {
                     Text("Enviar")
                 }
             }
         }
+    }
+}
+
+// Componente animado para mensajes
+@Composable
+fun AnimatedMessageBubble(
+    message: com.example.apao.data.Message,
+    isFromCurrentUser: Boolean
+) {
+    var visible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+    
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300)) + 
+                slideInHorizontally(
+                    initialOffsetX = { if (isFromCurrentUser) it else -it },
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ),
+        exit = fadeOut(animationSpec = tween(200))
+    ) {
+        MessageBubble(
+            message = message,
+            isFromCurrentUser = isFromCurrentUser
+        )
     }
 }
 

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.util.Date
 import java.util.UUID
 
@@ -36,9 +37,12 @@ class EventViewModel(application: Application) : AndroidViewModel(application) {
     private val _registrationSuccess = MutableStateFlow(false)
     val registrationSuccess: StateFlow<Boolean> = _registrationSuccess.asStateFlow()
     
+    private var initialDataLoaded = false
+    
     init {
-        loadInitialData()
         observeRepository()
+        // Cargar eventos de ejemplo solo al inicio, no cada vez
+        loadInitialData()
     }
     
     fun resetRegistrationSuccess() {
@@ -48,45 +52,53 @@ class EventViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     private fun loadInitialData() {
-        // Cargar algunos eventos de ejemplo
-        val sampleEvents = listOf(
-            Event(
-                id = "1",
-                title = "Partido de Fútbol",
-                description = "Partido amistoso en el parque central",
-                sport = "Fútbol",
-                location = "Parque Central",
-                date = Date(),
-                time = "18:00",
-                maxParticipants = 22,
-                currentParticipants = 15,
-                organizerId = "org1",
-                organizerName = "Juan Pérez",
-                imageUrl = "",
-                likes = listOf("user1", "user2"),
-                comments = emptyList()
-            ),
-            Event(
-                id = "2",
-                title = "Torneo de Baloncesto",
-                description = "Torneo eliminatorio de baloncesto",
-                sport = "Baloncesto",
-                location = "Cancha Municipal",
-                date = Date(),
-                time = "16:00",
-                maxParticipants = 20,
-                currentParticipants = 12,
-                organizerId = "org2",
-                organizerName = "María García",
-                imageUrl = "",
-                likes = listOf("user1"),
-                comments = emptyList()
-            )
-        )
+        // Cargar algunos eventos de ejemplo solo la primera vez
+        if (initialDataLoaded) return
         
         viewModelScope.launch {
-            sampleEvents.forEach { event ->
-                repository.addEvent(event)
+            // Esperar un momento para que observeRepository se establezca
+            delay(300)
+            
+            // Solo cargar eventos de ejemplo si la lista está vacía después de que se establezca el observer
+            if (_events.value.isEmpty()) {
+                initialDataLoaded = true
+                val sampleEvents = listOf(
+                    Event(
+                        id = "sample-1",
+                        title = "Partido de Fútbol",
+                        description = "Partido amistoso en el parque central",
+                        sport = "Fútbol",
+                        location = "Parque Central",
+                        date = Date(),
+                        time = "18:00",
+                        maxParticipants = 22,
+                        currentParticipants = 15,
+                        organizerId = "org1",
+                        organizerName = "Juan Pérez",
+                        imageUrl = "",
+                        likes = listOf("user1", "user2"),
+                        comments = emptyList()
+                    ),
+                    Event(
+                        id = "sample-2",
+                        title = "Torneo de Baloncesto",
+                        description = "Torneo eliminatorio de baloncesto",
+                        sport = "Baloncesto",
+                        location = "Cancha Municipal",
+                        date = Date(),
+                        time = "16:00",
+                        maxParticipants = 20,
+                        currentParticipants = 12,
+                        organizerId = "org2",
+                        organizerName = "María García",
+                        imageUrl = "",
+                        likes = listOf("user1"),
+                        comments = emptyList()
+                    )
+                )
+                sampleEvents.forEach { event ->
+                    repository.addEvent(event)
+                }
             }
         }
     }

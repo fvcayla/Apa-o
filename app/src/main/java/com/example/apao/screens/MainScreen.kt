@@ -1,5 +1,7 @@
 package com.example.apao.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,8 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,10 +30,10 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    viewModel: EventViewModel,
     onNavigateToProfile: () -> Unit,
     onNavigateToCreateEvent: () -> Unit,
-    onNavigateToMessages: (String) -> Unit,
-    viewModel: EventViewModel = viewModel()
+    onNavigateToMessages: (String) -> Unit
 ) {
     val events by viewModel.events.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
@@ -61,7 +66,7 @@ fun MainScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        IconButton(
+                        AnimatedIconButton(
                             onClick = onNavigateToCreateEvent,
                             modifier = Modifier.size(48.dp)
                         ) {
@@ -81,7 +86,7 @@ fun MainScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        IconButton(
+                        AnimatedIconButton(
                             onClick = onNavigateToProfile,
                             modifier = Modifier.size(48.dp)
                         ) {
@@ -107,8 +112,11 @@ fun MainScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(events) { event ->
-                EventPostCard(
+            items(
+                items = events,
+                key = { it.id }
+            ) { event ->
+                AnimatedEventCard(
                     event = event,
                     currentUserId = currentUser?.id ?: "",
                     onLikeClick = { viewModel.likeEvent(event.id) },
@@ -123,6 +131,41 @@ fun MainScreen(
     }
 }
 
+// Animación de entrada para las cards de eventos
+@Composable
+fun AnimatedEventCard(
+    event: Event,
+    currentUserId: String,
+    onLikeClick: () -> Unit,
+    onMessageClick: () -> Unit,
+    onSkipClick: () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+    
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300)) + 
+                slideInVertically(
+                    initialOffsetY = { it / 2 },
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ),
+        exit = fadeOut(animationSpec = tween(200)) + 
+               slideOutVertically(animationSpec = tween(200))
+    ) {
+        EventPostCard(
+            event = event,
+            currentUserId = currentUserId,
+            onLikeClick = onLikeClick,
+            onMessageClick = onMessageClick,
+            onSkipClick = onSkipClick
+        )
+    }
+}
+
 @Composable
 fun EventPostCard(
     event: Event,
@@ -132,6 +175,13 @@ fun EventPostCard(
     onSkipClick: () -> Unit
 ) {
     val isLiked = event.likes.contains(currentUserId)
+    
+    // Animación del contador de likes
+    val likeCount by animateIntAsState(
+        targetValue = event.likes.size,
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label = "likeCount"
+    )
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -213,9 +263,9 @@ fun EventPostCard(
                 }
             }
             
-            // Contador de likes
+            // Contador de likes animado
             Text(
-                text = "${event.likes.size} Likes",
+                text = "$likeCount Likes",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 52.dp)
@@ -226,33 +276,120 @@ fun EventPostCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Botón Like
-                OutlinedButton(
+                // Botón Like animado
+                AnimatedLikeButton(
+                    isLiked = isLiked,
                     onClick = onLikeClick,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = if (isLiked) Color.Red else MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Like")
-                }
+                    modifier = Modifier.weight(1f)
+                )
                 
-                // Botón Mensaje
-                OutlinedButton(
+                // Botón Mensaje animado
+                AnimatedActionButton(
+                    text = "Mensaje",
                     onClick = onMessageClick,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Mensaje")
-                }
+                )
                 
-                // Botón Omitir
-                OutlinedButton(
+                // Botón Omitir animado
+                AnimatedActionButton(
+                    text = "Omitir",
                     onClick = onSkipClick,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Omitir")
-                }
+                )
             }
         }
+    }
+}
+
+// Botón de Like con animación
+@Composable
+fun AnimatedLikeButton(
+    isLiked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "buttonScale"
+    )
+    
+    val color by animateColorAsState(
+        targetValue = if (isLiked) Color.Red else MaterialTheme.colorScheme.primary,
+        animationSpec = tween(300),
+        label = "buttonColor"
+    )
+    
+    OutlinedButton(
+        onClick = {
+            onClick()
+        },
+        modifier = modifier.scale(scale),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = color
+        )
+    ) {
+        Text("Like")
+    }
+}
+
+// Botón de acción genérico con animación
+@Composable
+fun AnimatedActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "buttonScale"
+    )
+    
+    OutlinedButton(
+        onClick = {
+            onClick()
+        },
+        modifier = modifier.scale(scale)
+    ) {
+        Text(text)
+    }
+}
+
+// IconButton animado
+@Composable
+fun AnimatedIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.8f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "iconButtonScale"
+    )
+    
+    IconButton(
+        onClick = {
+            onClick()
+        },
+        modifier = modifier.scale(scale)
+    ) {
+        content()
     }
 }

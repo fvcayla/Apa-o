@@ -33,6 +33,7 @@ fun AppNavigation(navController: NavHostController) {
     ) {
         composable("login") {
             LoginScreen(
+                viewModel = viewModel,
                 onLoginSuccess = {
                     navController.navigate("main") {
                         popUpTo("login") { inclusive = true }
@@ -43,6 +44,7 @@ fun AppNavigation(navController: NavHostController) {
         
         composable("main") {
             MainScreen(
+                viewModel = viewModel,
                 onNavigateToProfile = {
                     navController.navigate("profile")
                 },
@@ -71,6 +73,7 @@ fun AppNavigation(navController: NavHostController) {
         
         composable("create_event") {
             CreateEventScreen(
+                viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 },

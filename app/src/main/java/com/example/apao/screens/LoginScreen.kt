@@ -1,5 +1,7 @@
 package com.example.apao.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -19,8 +21,8 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
-    viewModel: EventViewModel = viewModel()
+    viewModel: EventViewModel,
+    onLoginSuccess: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -53,29 +55,34 @@ fun LoginScreen(
             isLoading = false
             errorMessage = ""
             showSuccessMessage = true
-            // Limpiar el flag de registro exitoso después de un tiempo
             delay(5000)
             showSuccessMessage = false
             viewModel.resetRegistrationSuccess()
         }
     }
     
-    // Resetear campos cuando cambia el modo
     LaunchedEffect(isLoginMode) {
-        // Limpiar mensajes cuando cambia el modo
         errorMessage = ""
         showSuccessMessage = false
     }
     
-    // Timeout para resetear loading después de 10 segundos
     LaunchedEffect(isLoading) {
         if (isLoading) {
-            delay(10000) // Esperar 10 segundos
+            delay(10000)
             if (isLoading) {
                 isLoading = false
                 errorMessage = "La operación está tardando demasiado. Por favor intenta nuevamente."
             }
         }
+    }
+    
+    var logoVisible by remember { mutableStateOf(false) }
+    var formVisible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        logoVisible = true
+        delay(200)
+        formVisible = true
     }
     
     Column(
@@ -85,215 +92,245 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Logo/Título
-        Text(
-            text = "Apaño",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-        
-        // Formulario
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        AnimatedVisibility(
+            visible = logoVisible,
+            enter = fadeIn(animationSpec = tween(500)) + 
+                    scaleIn(
+                        initialScale = 0.8f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            Text(
+                text = "Apaño",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
+        }
+        
+        AnimatedVisibility(
+            visible = formVisible,
+            enter = fadeIn(animationSpec = tween(500, delayMillis = 200)) + 
+                    slideInVertically(
+                        initialOffsetY = { it / 3 },
+                        animationSpec = tween(500, delayMillis = 200, easing = FastOutSlowInEasing)
+                    )
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                if (isLoginMode) {
-                    // Modo Login
-                    Text(
-                        text = "Iniciar Sesión",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    // Campo de email
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email") },
-                        placeholder = { Text("@email.com") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-                    )
-                    
-                    // Campo de contraseña
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Contraseña") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                    )
-                    
-                    // Botón de login
-                    Button(
-                        onClick = {
-                            if (email.isNotEmpty() && password.isNotEmpty()) {
-                                isLoading = true
-                                errorMessage = ""
-                                showSuccessMessage = false
-                                viewModel.loginUser(email, password)
-                            } else {
-                                errorMessage = "Por favor completa todos los campos"
-                                showSuccessMessage = false
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        } else {
-                            Text("Iniciar Sesión")
-                        }
-                    }
-                    
-                    // Enlace para registrarse
-                    TextButton(
-                        onClick = { isLoginMode = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("¿No tienes cuenta? Regístrate")
-                    }
-                    
-                } else {
-                    // Modo Registro (pantalla principal)
-                    Text(
-                        text = "Registro",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    // Campo de nombre
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Name") },
-                        placeholder = { Text("username") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    // Campo de email
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email") },
-                        placeholder = { Text("@email.com") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-                    )
-                    
-                    // Campo de contraseña
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                    )
-                    
-                    // Campo de confirmar contraseña
-                    OutlinedTextField(
-                        value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
-                        label = { Text("Confirm Password") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                    )
-                    
-                    // Botón de registro
-                    Button(
-                        onClick = {
-                            if (name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
-                                if (password == confirmPassword) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (isLoginMode) {
+                        Text(
+                            text = "Iniciar Sesión",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            placeholder = { Text("@email.com") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        )
+                        
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Contraseña") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                        
+                        Button(
+                            onClick = {
+                                if (email.isNotEmpty() && password.isNotEmpty()) {
                                     isLoading = true
                                     errorMessage = ""
                                     showSuccessMessage = false
-                                    viewModel.registerUser(email, password, name)
+                                    viewModel.loginUser(email, password)
                                 } else {
-                                    errorMessage = "Las contraseñas no coinciden"
+                                    errorMessage = "Por favor completa todos los campos"
                                     showSuccessMessage = false
                                 }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
                             } else {
-                                errorMessage = "Por favor completa todos los campos"
-                                showSuccessMessage = false
+                                Text("Iniciar Sesión")
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        } else {
-                            Text("Sign up")
+                        }
+                        
+                        TextButton(
+                            onClick = { isLoginMode = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("¿No tienes cuenta? Regístrate")
+                        }
+                        
+                    } else {
+                        Text(
+                            text = "Registro",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("Name") },
+                            placeholder = { Text("username") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            placeholder = { Text("@email.com") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        )
+                        
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Password") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                        
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            label = { Text("Confirm Password") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                        
+                        Button(
+                            onClick = {
+                                if (name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
+                                    if (password == confirmPassword) {
+                                        isLoading = true
+                                        errorMessage = ""
+                                        showSuccessMessage = false
+                                        viewModel.registerUser(email, password, name)
+                                    } else {
+                                        errorMessage = "Las contraseñas no coinciden"
+                                        showSuccessMessage = false
+                                    }
+                                } else {
+                                    errorMessage = "Por favor completa todos los campos"
+                                    showSuccessMessage = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Text("Sign up")
+                            }
+                        }
+                        
+                        TextButton(
+                            onClick = { isLoginMode = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("already have an account? Login")
                         }
                     }
                     
-                    // Enlace para iniciar sesión
-                    TextButton(
-                        onClick = { isLoginMode = true },
-                        modifier = Modifier.fillMaxWidth()
+                    AnimatedVisibility(
+                        visible = showSuccessMessage && registrationSuccess,
+                        enter = fadeIn(animationSpec = tween(400)) + 
+                                slideInVertically(
+                                    initialOffsetY = { -it / 2 },
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                ) + 
+                                scaleIn(
+                                    initialScale = 0.9f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                ),
+                        exit = fadeOut(animationSpec = tween(300)) + 
+                               slideOutVertically(animationSpec = tween(300))
                     ) {
-                        Text("already have an account? Login")
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Text(
+                                text = "¡Registro exitoso! Ahora puedes iniciar sesión.",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(16.dp),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
-                }
-                
-                // Mensaje de éxito de registro
-                if (showSuccessMessage && registrationSuccess) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                    
+                    AnimatedVisibility(
+                        visible = errorMessage.isNotEmpty() && !showSuccessMessage,
+                        enter = fadeIn(animationSpec = tween(300)) + 
+                                slideInVertically(
+                                    initialOffsetY = { -it / 2 },
+                                    animationSpec = tween(300)
+                                ),
+                        exit = fadeOut(animationSpec = tween(200)) + 
+                               slideOutVertically(animationSpec = tween(200))
                     ) {
-                        Text(
-                            text = "¡Registro exitoso! Ahora puedes iniciar sesión.",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(16.dp),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-                
-                // Mensaje de error
-                if (errorMessage.isNotEmpty() && !showSuccessMessage) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Text(
-                            text = errorMessage,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
                     }
                 }
             }

@@ -52,7 +52,8 @@ class EventRepository(context: Context) {
     
     suspend fun addEvent(event: Event) {
         val currentEvents = _events.value.toMutableList()
-        currentEvents.add(event)
+        // Agregar el nuevo evento al principio de la lista (más recientes primero)
+        currentEvents.add(0, event)
         _events.value = currentEvents
     }
     
