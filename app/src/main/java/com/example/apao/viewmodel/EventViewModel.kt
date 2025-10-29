@@ -1,6 +1,7 @@
 package com.example.apao.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.apao.data.Event
 import com.example.apao.data.User
@@ -14,8 +15,8 @@ import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.UUID
 
-class EventViewModel : ViewModel() {
-    private val repository = EventRepository()
+class EventViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = EventRepository(application.applicationContext)
     
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
@@ -38,6 +39,12 @@ class EventViewModel : ViewModel() {
     init {
         loadInitialData()
         observeRepository()
+    }
+    
+    fun resetRegistrationSuccess() {
+        viewModelScope.launch {
+            _registrationSuccess.value = false
+        }
     }
     
     private fun loadInitialData() {
@@ -110,21 +117,19 @@ class EventViewModel : ViewModel() {
             _loginError.value = null
             _registrationSuccess.value = false
             
-            // Verificar si el email ya existe
-            val existingUser = repository.getUserByEmail(email)
-            if (existingUser != null) {
-                _loginError.value = "Este email ya está registrado"
-                return@launch
-            }
-            
             val user = User(
                 id = UUID.randomUUID().toString(),
                 email = email,
                 password = password,
                 name = name
             )
-            repository.registerUser(user)
-            _registrationSuccess.value = true
+            
+            val success = repository.registerUser(user)
+            if (success) {
+                _registrationSuccess.value = true
+            } else {
+                _loginError.value = "Este email ya está registrado"
+            }
         }
     }
     

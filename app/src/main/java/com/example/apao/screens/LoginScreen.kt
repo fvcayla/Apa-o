@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.apao.viewmodel.EventViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +29,7 @@ fun LoginScreen(
     var isLoginMode by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var showSuccessMessage by remember { mutableStateOf(false) }
     
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
     val loginError by viewModel.loginError.collectAsState()
@@ -48,10 +50,31 @@ fun LoginScreen(
     
     LaunchedEffect(registrationSuccess) {
         if (registrationSuccess) {
-            errorMessage = ""
             isLoading = false
-            // Mostrar mensaje de éxito
-            errorMessage = "¡Registro exitoso! Ahora puedes iniciar sesión."
+            errorMessage = ""
+            showSuccessMessage = true
+            // Limpiar el flag de registro exitoso después de un tiempo
+            delay(5000)
+            showSuccessMessage = false
+            viewModel.resetRegistrationSuccess()
+        }
+    }
+    
+    // Resetear campos cuando cambia el modo
+    LaunchedEffect(isLoginMode) {
+        // Limpiar mensajes cuando cambia el modo
+        errorMessage = ""
+        showSuccessMessage = false
+    }
+    
+    // Timeout para resetear loading después de 10 segundos
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            delay(10000) // Esperar 10 segundos
+            if (isLoading) {
+                isLoading = false
+                errorMessage = "La operación está tardando demasiado. Por favor intenta nuevamente."
+            }
         }
     }
     
@@ -117,9 +140,11 @@ fun LoginScreen(
                             if (email.isNotEmpty() && password.isNotEmpty()) {
                                 isLoading = true
                                 errorMessage = ""
+                                showSuccessMessage = false
                                 viewModel.loginUser(email, password)
                             } else {
                                 errorMessage = "Por favor completa todos los campos"
+                                showSuccessMessage = false
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -202,12 +227,15 @@ fun LoginScreen(
                                 if (password == confirmPassword) {
                                     isLoading = true
                                     errorMessage = ""
+                                    showSuccessMessage = false
                                     viewModel.registerUser(email, password, name)
                                 } else {
                                     errorMessage = "Las contraseñas no coinciden"
+                                    showSuccessMessage = false
                                 }
                             } else {
                                 errorMessage = "Por favor completa todos los campos"
+                                showSuccessMessage = false
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -232,23 +260,36 @@ fun LoginScreen(
                     }
                 }
                 
-                // Mensaje de error/éxito
-                if (errorMessage.isNotEmpty()) {
+                // Mensaje de éxito de registro
+                if (showSuccessMessage && registrationSuccess) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (errorMessage.contains("¡Registro exitoso!")) 
-                                MaterialTheme.colorScheme.primaryContainer 
-                            else 
-                                MaterialTheme.colorScheme.errorContainer
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = "¡Registro exitoso! Ahora puedes iniciar sesión.",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(16.dp),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                
+                // Mensaje de error
+                if (errorMessage.isNotEmpty() && !showSuccessMessage) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         )
                     ) {
                         Text(
                             text = errorMessage,
-                            color = if (errorMessage.contains("¡Registro exitoso!")) 
-                                MaterialTheme.colorScheme.onPrimaryContainer 
-                            else 
-                                MaterialTheme.colorScheme.onErrorContainer,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(16.dp)

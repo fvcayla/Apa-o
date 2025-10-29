@@ -157,3 +157,5 @@ data class MensajeEntity(
     val timestamp: Long = System.currentTimeMillis(),
     val leido: Boolean = false
 )
+
+

@@ -111,3 +111,5 @@ interface ApaoDao {
     @Query("UPDATE mensajes SET leido = 1 WHERE id = :mensajeId")
     suspend fun marcarMensajeComoLeido(mensajeId: String)
 }
+
+

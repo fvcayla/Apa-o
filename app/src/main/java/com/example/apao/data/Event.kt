@@ -26,3 +26,5 @@ data class Comment(
     val text: String = "",
     val timestamp: Date = Date()
 )
+
+

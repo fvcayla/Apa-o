@@ -156,3 +156,5 @@ INSERT OR IGNORE INTO deportes_favoritos (id, usuario_id, deporte) VALUES
 -- LEFT JOIN likes l ON u.id = l.usuario_id
 -- LEFT JOIN comentarios c ON u.id = c.usuario_id
 -- GROUP BY u.id;
+
+

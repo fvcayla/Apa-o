@@ -1,24 +1,54 @@
 package com.example.apao.repository
 
+import android.content.Context
 import com.example.apao.data.Event
 import com.example.apao.data.User
 import com.example.apao.data.Message
+import com.example.apao.database.ApaoDatabase
+import com.example.apao.database.UsuarioEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class EventRepository {
+class EventRepository(context: Context) {
+    private val database = ApaoDatabase.getDatabase(context)
+    private val dao = database.apaoDao()
+    
     private val _events = MutableStateFlow<List<Event>>(emptyList())
     val events: Flow<List<Event>> = _events.asStateFlow()
-    
-    private val _users = MutableStateFlow<List<User>>(emptyList())
-    val users: Flow<List<User>> = _users.asStateFlow()
     
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: Flow<User?> = _currentUser.asStateFlow()
     
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: Flow<List<Message>> = _messages.asStateFlow()
+    
+    // Convertir UsuarioEntity a User
+    private fun UsuarioEntity.toUser(): User {
+        return User(
+            id = this.id,
+            email = this.email,
+            password = this.password,
+            name = this.name,
+            profileImage = this.profileImage ?: "",
+            bio = this.bio ?: "",
+            sports = emptyList() // Se puede cargar desde deportes_favoritos si es necesario
+        )
+    }
+    
+    // Convertir User a UsuarioEntity
+    private fun User.toUsuarioEntity(): UsuarioEntity {
+        return UsuarioEntity(
+            id = this.id,
+            email = this.email,
+            password = this.password,
+            name = this.name,
+            profileImage = this.profileImage.takeIf { it.isNotEmpty() },
+            bio = this.bio.takeIf { it.isNotEmpty() },
+            fechaRegistro = System.currentTimeMillis(),
+            estado = "ACTIVO"
+        )
+    }
     
     suspend fun addEvent(event: Event) {
         val currentEvents = _events.value.toMutableList()
@@ -63,21 +93,45 @@ class EventRepository {
         }
     }
     
-    suspend fun registerUser(user: User) {
-        val currentUsers = _users.value.toMutableList()
-        currentUsers.add(user)
-        _users.value = currentUsers
-        _currentUser.value = user
+    suspend fun registerUser(user: User): Boolean {
+        try {
+            // Verificar si el email ya existe en la base de datos
+            val existingUser = dao.getUsuarioByEmail(user.email)
+            if (existingUser != null) {
+                return false
+            }
+            
+            // Convertir User a UsuarioEntity y guardar en la base de datos
+            val usuarioEntity = user.toUsuarioEntity()
+            dao.insertUsuario(usuarioEntity)
+            
+            // NO establecer _currentUser aquí - el usuario necesita iniciar sesión
+            return true
+        } catch (e: Exception) {
+            return false
+        }
     }
     
     suspend fun loginUser(email: String, password: String): Boolean {
-        val user = _users.value.find { it.email == email && it.password == password }
-        return if (user != null) {
-            _currentUser.value = user
-            true
-        } else {
-            false
+        try {
+            // Buscar usuario en la base de datos
+            val usuarioEntity = dao.loginUsuario(email, password)
+            return if (usuarioEntity != null) {
+                val user = usuarioEntity.toUser()
+                _currentUser.value = user
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            return false
         }
+    }
+    
+    // Método para verificar usuarios registrados (para debug)
+    suspend fun getUsersCount(): Int {
+        // Esta función podría requerir agregar un método en el DAO si se necesita
+        return 0 // Por ahora retornamos 0, ya que no tenemos un método para contar
     }
     
     suspend fun logout() {
@@ -85,7 +139,24 @@ class EventRepository {
     }
     
     suspend fun getUserByEmail(email: String): User? {
-        return _users.value.find { it.email == email }
+        try {
+            val usuarioEntity = dao.getUsuarioByEmail(email)
+            return usuarioEntity?.toUser()
+        } catch (e: Exception) {
+            return null
+        }
+    }
+    
+    // Cargar el usuario actual desde SharedPreferences o mantenerlo en memoria
+    suspend fun loadCurrentUser(userId: String) {
+        try {
+            val usuarioEntity = dao.getUsuarioById(userId)
+            usuarioEntity?.let {
+                _currentUser.value = it.toUser()
+            }
+        } catch (e: Exception) {
+            // Error al cargar usuario
+        }
     }
     
     suspend fun sendMessage(message: Message) {

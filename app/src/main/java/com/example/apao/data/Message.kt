@@ -19,3 +19,5 @@ data class Chat(
     val lastMessage: Message? = null,
     val unreadCount: Int = 0
 )
+
+
